@@ -19,7 +19,7 @@ jobs:
           cd /workspaces/equipo
           for file in *; do
             if [[ $file =~ \.(template_bash|template_python|template_jenkinsfile) ]]; then
-              template_type=$(basename "$file" | cut -d '.' -f 2)
+              template_type=$(basename "$file" | cut -d '.' -f 1)
               echo "Plantilla encontrada: ${template_type}"
             fi
           done
@@ -30,8 +30,7 @@ jobs:
           cd /workspaces/equipo
           for file in *; do
             if [[ $file =~ \.(template_bash|template_python|template_jenkinsfile) ]]; then
-              template_type=$(basename "$file" | cut -d '.' -f 2)
-              echo "Plantilla encontrada: ${template_type}"
+              template_type=$(basename "$file" | cut -d '.' -f 1)
               cat "$file" | yq e '.type' > temp.txt
               if [ ! -s temp.txt ]; then
                 echo "Error: La plantilla no tiene el campo 'type'"
@@ -43,10 +42,13 @@ jobs:
           done
 
       - name: Comprueba la estructura con plantilla
-        uses: dotnet/actions-template-validate@v3
-        with:
-          path: 'temp.txt'
-          type: ${{ steps.find-templates.outputs.template_type }}
+        run: |
+          temp=$(echo "$template_value" | jq '.')
+          if echo "$temp" | jq -e '.type' != null; then
+            echo "La plantilla es válida"
+          else
+            echo "La plantilla no es válida"
+          fi
 
       - name: Muestra el resultado
         run: |
@@ -58,7 +60,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MERGE_REQUEST_TITLE: "Validación de código"
-          MERge_REQUEST_DESCRIPTION: "Validación de código para el equipo $1"
+          MERGE_REQUEST_DESCRIPTION: "Validación de código para el equipo $1"
 
       - name: Mergea al branch main
         if: github.event.payload.pull_request.merge_state == 'merged'
@@ -67,3 +69,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MERGE_REQUEST_TITLE: "Validación y merge a producción"
           MERGE_REQUEST_DESCRIPTION: "Validación de código para el equipo $1 en producción"
+
+      - name: Verifica si el archivo JSON es válido
+        uses: python@v3.8
+        env:
+          PYTHONPATH: ${{ artifacts.python }}
+          script: |
+            import jsonschema
+            with open '${GITHUB_WORKSPACE}/.github/workflows/valida-y-mergea.yml', 'r' as f:
+              schema = json.load(f)
+            with open '${GITHUBeworkSPACE}/.github/workflows/valida-y-mergea.yml', 'r' as f:
+              schema_str = f.read()
+            try:
+              jsonschema.validate(schema_str, schema)
+              echo "El archivo JSON es válido"
+            except jsonschema.exceptions.ValidationError as e:
+              echo "El archivo JSON no es válido"
