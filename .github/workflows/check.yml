@@ -1,4 +1,4 @@
-name: Validar y mergear código
+name: Validar y mergea código
 
 on:
   push:
@@ -53,22 +53,17 @@ jobs:
           echo "::log ${ Steps[validate-and-extract-template][result] }::"
 
       - name: Mergea al branch develop
+        if: github.event.payload.pull_request.merge_state == 'merged'
         uses: actions/merge-request@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MERGE_REQUEST_TITLE: "Validación de código"
-          MERGE_REQUEST_DESCRIPTION: "Validación de código para el equipo $1"
+          MERge_REQUEST_DESCRIPTION: "Validación de código para el equipo $1"
 
       - name: Mergea al branch main
+        if: github.event.payload.pull_request.merge_state == 'merged'
         uses: actions/merge-request@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MERGE_REQUEST_TITLE: "Validación y merge a producción"
           MERGE_REQUEST_DESCRIPTION: "Validación de código para el equipo $1 en producción"
-
-      - name: Confirma la integración continua
-        uses: appleboy/ssh-action@v2
-        env:
-          SSH_HOST: github.com
-          SSH_USERNAME: ${{ secrets.GITHUB_USERNAME }}
-          ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
