@@ -43,7 +43,7 @@ jobs:
           done
 
       - name: Comprueba la estructura con plantilla
-        uses: dotnet/actions-template-validate@v2
+        uses: dotnet/actions-template-validate@v3
         with:
           path: 'temp.txt'
           type: ${{ steps.find-templates.outputs.template_type }}
@@ -53,14 +53,14 @@ jobs:
           echo "::log ${ Steps[validate-and-extract-template][result] }::"
 
       - name: Mergea al branch develop
-        uses: actions/merge-request@v2
+        uses: actions/merge-request@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MERGE_REQUEST_TITLE: "Validación de código"
           MERGE_REQUEST_DESCRIPTION: "Validación de código para el equipo $1"
 
       - name: Mergea al branch main
-        uses: actions/merge-request@v2
+        uses: actions/merge-request@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MERGE_REQUEST_TITLE: "Validación y merge a producción"
