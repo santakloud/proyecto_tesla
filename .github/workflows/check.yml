@@ -1,0 +1,74 @@
+name: Validar y mergear código
+
+on:
+  push:
+    branches:
+      - feature
+      - develop
+
+jobs:
+  valida-y-mergea:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clona el repositorio
+        uses: actions/checkout@v3
+
+      - name: Busca plantillas en equipos/
+        id: find-templates
+        run: |
+          cd /workspaces/equipo
+          for file in *; do
+            if [[ $file =~ \.(template_bash|template_python|template_jenkinsfile) ]]; then
+              template_type=$(basename "$file" | cut -d '.' -f 2)
+              echo "Plantilla encontrada: ${template_type}"
+            fi
+          done
+
+      - name: Comprueba estructura y extrae plantilla de equipo
+        id: validate-and-extract-template
+        run: |
+          cd /workspaces/equipo
+          for file in *; do
+            if [[ $file =~ \.(template_bash|template_python|template_jenkinsfile) ]]; then
+              template_type=$(basename "$file" | cut -d '.' -f 2)
+              echo "Plantilla encontrada: ${template_type}"
+              cat "$file" | yq e '.type' > temp.txt
+              if [ ! -s temp.txt ]; then
+                echo "Error: La plantilla no tiene el campo 'type'"
+                exit 1
+              fi
+              template_value=$(cat temp.txt)
+              rm temp.txt
+            fi
+          done
+
+      - name: Comprueba la estructura con plantilla
+        uses: dotnet/actions-template-validate@v2
+        with:
+          path: 'temp.txt'
+          type: ${{ steps.find-templates.outputs.template_type }}
+
+      - name: Muestra el resultado
+        run: |
+          echo "::log ${ Steps[validate-and-extract-template][result] }::"
+
+      - name: Mergea al branch develop
+        uses: actions/merge-request@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_REQUEST_TITLE: "Validación de código"
+          MERGE_REQUEST_DESCRIPTION: "Validación de código para el equipo $1"
+
+      - name: Mergea al branch main
+        uses: actions/merge-request@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_REQUEST_TITLE: "Validación y merge a producción"
+          MERGE_REQUEST_DESCRIPTION: "Validación de código para el equipo $1 en producción"
+
+      - name: Confirma la integración continua
+        uses: appleboy/ssh-action@v2
+        env:
+          SSH_HOST: github.com
+          SSH_USERNAME: ${{ secrets.GITHUB_USERNAME }}
+          ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
