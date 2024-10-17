@@ -1,4 +1,4 @@
-name: Validar y mergea código
+name: Valida y mergea código
 
 on:
   push:
@@ -54,23 +54,8 @@ jobs:
         run: |
           echo "::log ${ Steps[validate-and-extract-template][result] }::"
 
-      - name: Mergea al branch develop
-        if: github.event.payload.pull_request.merge_state == 'merged'
-        uses: actions/merge-request@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MERGE_REQUEST_TITLE: "Validación de código"
-          MERGE_REQUEST_DESCRIPTION: "Validación de código para el equipo $1"
-
-      - name: Mergea al branch main
-        if: github.event.payload.pull_request.merge_state == 'merged'
-        uses: actions/merge-request@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MERGE_REQUEST_TITLE: "Validación y merge a producción"
-          MERGE_REQUEST_DESCRIPTION: "Validación de código para el equipo $1 en producción"
-
-      - name: Verifica si el archivo JSON es válido
+      # Cambiamos la acción para usar un script Python
+      - name: Comprueba si el archivo JSON es válido
         uses: python@v3.8
         env:
           PYTHONPATH: ${{ artifacts.python }}
@@ -85,3 +70,22 @@ jobs:
               echo "El archivo JSON es válido"
             except jsonschema.exceptions.ValidationError as e:
               echo "El archivo JSON no es válido"
+
+      # Agregamos la acción para mergear al branch develop
+      - name: Mergea al branch develop
+        if: github.event.payload.pull_request.merge_state == 'merged'
+        uses: GitHubActions/merge@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_REQUEST_TITLE: "Validación de código"
+          MERGE_REQUEST_DESCRIPTION: "Validación de código para el equipo $1"
+
+      # Agregamos la acción para mergear al branch main
+      - name: Mergea al branch main
+        if: github.event.payload.pull_request.merge_state == 'merged'
+        uses: GitHubActions/merge@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_REQUEST_TITLE: "Validación de código"
+          MERGE_REQUEST_DESCRIPTION: "Validación de código para el equipo $1"
+
